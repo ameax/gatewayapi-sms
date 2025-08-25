@@ -11,7 +11,9 @@ use GuzzleHttp\Exception\GuzzleException;
 class GatewayApiClient
 {
     private Client $httpClient;
+
     private string $apiToken;
+
     private string $baseUrl = 'https://gatewayapi.com/rest/';
 
     public function __construct(string $apiToken, ?Client $httpClient = null)
@@ -27,14 +29,12 @@ class GatewayApiClient
     }
 
     /**
-     * Send SMS to recipients
+     * Send SMS to recipients.
      *
-     * @param string $sender
-     * @param string $message
      * @param array<int|string> $recipients
      * @param array<string, mixed> $options
-     * @return array{ids: array<string>, usage: array{total_cost: float, currency: string, countries: array}}
      * @throws GatewayApiException
+     * @return array{ids: array<int, string>, usage: array{total_cost: float, currency: string, countries: array<string, mixed>}}
      */
     public function sendSms(string $sender, string $message, array $recipients, array $options = []): array
     {
@@ -64,22 +64,23 @@ class GatewayApiClient
 
             $result = json_decode($response->getBody()->getContents(), true);
 
-            if (json_last_error() !== JSON_ERROR_NONE) {
+            if (json_last_error() !== JSON_ERROR_NONE || !is_array($result)) {
                 throw new GatewayApiException('Invalid JSON response from API');
             }
 
+            /** @var array{ids: array<int, string>, usage: array{total_cost: float, currency: string, countries: array<string, mixed>}} $result */
             return $result;
         } catch (GuzzleException $e) {
             throw new GatewayApiException(
                 'Failed to send SMS: ' . $e->getMessage(),
                 $e->getCode(),
-                $e
+                $e,
             );
         }
     }
 
     /**
-     * Format recipients for the API
+     * Format recipients for the API.
      *
      * @param array<int|string> $recipients
      * @return array<array{msisdn: string}>
@@ -87,15 +88,15 @@ class GatewayApiClient
     private function formatRecipients(array $recipients): array
     {
         $formatted = [];
-        
+
         foreach ($recipients as $recipient) {
             // Remove any non-numeric characters
             $msisdn = preg_replace('/[^0-9]/', '', (string) $recipient);
-            
+
             if (empty($msisdn)) {
                 throw new GatewayApiException("Invalid recipient number: {$recipient}");
             }
-            
+
             $formatted[] = ['msisdn' => $msisdn];
         }
 
@@ -103,16 +104,16 @@ class GatewayApiClient
     }
 
     /**
-     * Get the status of a sent message
+     * Get the status of a sent message.
      *
      * @param string|array<string> $messageIds
-     * @return array
      * @throws GatewayApiException
+     * @return array<string, mixed>
      */
     public function getMessageStatus(string|array $messageIds): array
     {
         $ids = is_array($messageIds) ? $messageIds : [$messageIds];
-        
+
         try {
             $response = $this->httpClient->get('mtsms', [
                 'auth' => [$this->apiToken, ''],
@@ -123,31 +124,32 @@ class GatewayApiClient
 
             $result = json_decode($response->getBody()->getContents(), true);
 
-            if (json_last_error() !== JSON_ERROR_NONE) {
+            if (json_last_error() !== JSON_ERROR_NONE || !is_array($result)) {
                 throw new GatewayApiException('Invalid JSON response from API');
             }
 
+            /** @var array<string, mixed> $result */
             return $result;
         } catch (GuzzleException $e) {
             throw new GatewayApiException(
                 'Failed to get message status: ' . $e->getMessage(),
                 $e->getCode(),
-                $e
+                $e,
             );
         }
     }
 
     /**
-     * Cancel scheduled messages
+     * Cancel scheduled messages.
      *
      * @param string|array<string> $messageIds
-     * @return array
      * @throws GatewayApiException
+     * @return array<string, mixed>
      */
     public function cancelMessages(string|array $messageIds): array
     {
         $ids = is_array($messageIds) ? $messageIds : [$messageIds];
-        
+
         try {
             $response = $this->httpClient->delete('mtsms', [
                 'auth' => [$this->apiToken, ''],
@@ -158,16 +160,17 @@ class GatewayApiClient
 
             $result = json_decode($response->getBody()->getContents(), true);
 
-            if (json_last_error() !== JSON_ERROR_NONE) {
+            if (json_last_error() !== JSON_ERROR_NONE || !is_array($result)) {
                 throw new GatewayApiException('Invalid JSON response from API');
             }
 
+            /** @var array<string, mixed> $result */
             return $result;
         } catch (GuzzleException $e) {
             throw new GatewayApiException(
                 'Failed to cancel messages: ' . $e->getMessage(),
                 $e->getCode(),
-                $e
+                $e,
             );
         }
     }

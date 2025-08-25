@@ -13,3 +13,4 @@
 *.log
 .env
 .env.local
+.php-cs-fixer.cache
